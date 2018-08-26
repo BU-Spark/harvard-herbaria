@@ -174,7 +174,7 @@ class YOLONet(object):
             centers = tf.tile(
                 centers, [1, 1, 1, self.centers_per_cell, 1]) / self.image_size
             #conditional probability for each class
-            
+
             classes = labels[..., 3:]
 
             offset = tf.reshape(
