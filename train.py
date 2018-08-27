@@ -63,9 +63,9 @@ class Solver(object):
         # variable initialization
         self.sess.run(tf.global_variables_initializer())
 
-        if self.weights_file is not None:
-            print('Restoring weights from: ' + self.weights_file)
-            self.saver.restore(self.sess, self.weights_file)
+        #if self.weights_file is not None:
+            #print('Restoring weights from: ' + self.weights_file)
+            #self.saver.restore(self.sess, self.weights_file)
 
         self.writer.add_graph(self.sess.graph)
     #-------------------------------------------------------------------------------------------------------------------
@@ -126,17 +126,19 @@ class Solver(object):
                     self.output_dir))
                 self.saver.save(
                     self.sess, self.ckpt_file, global_step=self.global_step)
-
+    #-------------------------------------------------------------------------------------------------------------------
+    # Save configuration data
+    # ------------------------------------------------------------------------------------------------------------------
     def save_cfg(self):
-
         with open(os.path.join(self.output_dir, 'config.txt'), 'w') as f:
             cfg_dict = cfg.__dict__
             for key in sorted(cfg_dict.keys()):
                 if key[0].isupper():
                     cfg_str = '{}: {}\n'.format(key, cfg_dict[key])
                     f.write(cfg_str)
-
-
+#-------------------------------------------------------------------------------------------------------------------
+# Update configuration path
+# ------------------------------------------------------------------------------------------------------------------
 def update_config_paths(data_dir, weights_file):
     cfg.DATA_PATH = data_dir
     cfg.CACHE_PATH = os.path.join(cfg.NETWORK_PATH, 'cache')

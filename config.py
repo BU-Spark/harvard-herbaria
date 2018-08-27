@@ -16,12 +16,11 @@ WEIGHTS_DIR = os.path.join(NETWORK_PATH, 'weights')
 LABEL_PATH = 'training.txt'
 WEIGHTS_FILE = None
 CLASSES = ['bud', 'flower', 'fruit']
-FLIPPED = False
 
 # model parameter
 #image size
 IMAGE_SIZE = 576
-CELL_SIZE = 9
+CELL_NUM = 9
 # WARNING: we now assume that every cell has only one object
 CENTERS_PER_CELL = 1
 ALPHA = 0.1

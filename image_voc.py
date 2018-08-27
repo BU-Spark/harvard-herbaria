@@ -1,9 +1,7 @@
 import os
-import xml.etree.ElementTree as ET
 import numpy as np
 import cv2
 import pickle
-import copy
 import config as cfg
 #----------------------------------------------------------------------------------------------------------------------
 # Author: Siqi Zhang
@@ -11,6 +9,7 @@ import config as cfg
 # Description: image vocabulary contains the function for processing training images
 # Input: None
 # Output: None
+# Assumption: The number of training images must be more than the batch size
 #----------------------------------------------------------------------------------------------------------------------
 
 class image_voc(object):
@@ -20,10 +19,10 @@ class image_voc(object):
         self.cache_path = cfg.CACHE_PATH
         self.batch_size = cfg.BATCH_SIZE
         self.image_size = cfg.IMAGE_SIZE
-        self.cell_size = cfg.CELL_SIZE
+        self.cell_num = cfg.CELL_NUM
+        self.cell_size = self.image_size / self.cell_num
         self.classes = cfg.CLASSES
         self.class_to_ind = dict(zip(self.classes, range(len(self.classes))))
-        self.flipped = cfg.FLIPPED
         self.phase = phase
         self.rebuild = rebuild
         self.cursor = 0   # the "pointer" used to access label items
@@ -37,14 +36,13 @@ class image_voc(object):
     # ----------------------------------------------------------------------------------------------------------------------
     def get(self):
         images = np.zeros(
-            (self.batch_size, self.image_size, self.image_size, 3))
+            (self.batch_size, self.image_size, self.image_size, 3)) # 3 is the number of channels in the image
         labels = np.zeros(
-            (self.batch_size, self.cell_size, self.cell_size, 25))
+            (self.batch_size, self.cell_num, self.cell_num, 6)) # 6 is the number of elements in the label: Pr_object,x,y,Pr_bud, Pr_flower, Pr_fruit
         count = 0
         while count < self.batch_size:
             imname = self.gt_labels[self.cursor]['imname']
-            flipped = self.gt_labels[self.cursor]['flipped']
-            images[count, :, :, :] = self.image_read(imname, flipped)
+            images[count, :, :, :] = self.image_read(imname)
             labels[count, :, :, :] = self.gt_labels[self.cursor]['label']
             count += 1
             self.cursor += 1
@@ -56,179 +54,113 @@ class image_voc(object):
     # ----------------------------------------------------------------------------------------------------------------------
     # load and preprocess the image
     # ----------------------------------------------------------------------------------------------------------------------
-    def image_read(self, imname, flipped=False):
+    def image_read(self, imname):
         image = cv2.imread(imname)
         image = cv2.resize(image, (self.image_size, self.image_size))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
         image = (image / 255.0) * 2.0 - 1.0
-        if flipped:
-            image = image[:, ::-1, :]
         return image
     # ----------------------------------------------------------------------------------------------------------------------
     # flip and shuffle training images
     # ----------------------------------------------------------------------------------------------------------------------
     def prepare(self):
         gt_labels = self.load_labels()
-        if self.flipped:
-            print('Appending horizontally-flipped training examples ...')
-            gt_labels_cp = copy.deepcopy(gt_labels)
-            for idx in range(len(gt_labels_cp)):
-                gt_labels_cp[idx]['flipped'] = True
-                gt_labels_cp[idx]['label'] =\
-                    gt_labels_cp[idx]['label'][:, ::-1, :]
-                for i in range(self.cell_size):
-                    for j in range(self.cell_size):
-                        if gt_labels_cp[idx]['label'][i, j, 0] == 1:
-                            gt_labels_cp[idx]['label'][i, j, 1] = \
-                                self.image_size - 1 -\
-                                gt_labels_cp[idx]['label'][i, j, 1]
-            gt_labels += gt_labels_cp
+        #shuffle the data
         np.random.shuffle(gt_labels)
         self.gt_labels = gt_labels
         return gt_labels
     # ----------------------------------------------------------------------------------------------------------------------
-    # load labels
+    # Process the line of label information.
+    # Output is a dictionary with 2 elements: image name and labels
+    # The label is a cell_size by cell_size x 6 matrix
+    # Assumption: One cell can only have 1 object. The later object centers will be discarded.
+    # ----------------------------------------------------------------------------------------------------------------------
+    def process_line(self, line):
+        label = np.zeros((self.cell_num, self.cell_num, 6))
+        # parse the line
+        image_path = "training/" + line[0] + ".jpg"
+        # input image
+        img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        # compute the ratio of the length and with of the shrunk image over original image
+        h_ratio = 1.0 * self.image_size / img.shape[0]
+        w_ratio = 1.0 * self.image_size / img.shape[1]
+        # coordinate lists
+        bud = line[1].split(";")
+        flower = line[2].split(";")
+        fruit = line[3].split("\n")[0].split(";")
+        # construct the ground truth
+        # x,y are converted to the
+        for item in bud:
+            if item != " ":
+                x = int(item.split("_")[0]) * w_ratio
+                y = int(item.split("_")[1]) * h_ratio
+                # find the cell that this point belongs to
+                x_cell = int(np.floor(x / self.cell_size))
+                y_cell = int(np.floor(y / self.cell_size))
+                # determine whether this cell has been occupied i.e. probability of existing object == 1
+                # unassigned cell
+                if label[x_cell,y_cell,0] == 0:
+                    label[x_cell, y_cell, 0] = 1
+                    label[x_cell, y_cell, 1] = x
+                    label[x_cell, y_cell, 2] = y
+                    # this is a bud
+                    label[x_cell, y_cell, 3] = 0
+        # draw flower
+        for item in flower:
+            if item != " ":
+                x = int(item.split("_")[0]) * w_ratio
+                y = int(item.split("_")[1]) * h_ratio
+                # find the cell that this point belongs to
+                x_cell = int(np.floor(x / self.cell_size))
+                y_cell = int(np.floor(y / self.cell_size))
+                # determine whether this cell has been occupied i.e. probability of existing object == 1
+                # unassigned cell
+                if label[x_cell,y_cell,0] == 0:
+                    label[x_cell, y_cell, 0] = 1
+                    label[x_cell, y_cell, 1] = x
+                    label[x_cell, y_cell, 2] = y
+                    # this is a flower
+                    label[x_cell, y_cell, 3] = 1
+        # draw flower
+        for item in fruit:
+            if item != " ":
+                x = int(item.split("_")[0]) * w_ratio
+                y = int(item.split("_")[1]) * h_ratio
+                # find the cell that this point belongs to
+                x_cell = int(np.floor(x / self.cell_size))
+                y_cell = int(np.floor(y / self.cell_size))
+                # determine whether this cell has been occupied i.e. probability of existing object == 1
+                # unassigned cell
+                if label[x_cell, y_cell, 0] == 0:
+                    label[x_cell, y_cell, 0] = 1
+                    label[x_cell, y_cell, 1] = x
+                    label[x_cell, y_cell, 2] = y
+                    # this is a fruit
+                    label[x_cell, y_cell, 3] = 2
+        return {'imname': image_path, 'label': label}
+    # ----------------------------------------------------------------------------------------------------------------------
+    # load labels from txt file and convert the coordinates into groudtruth
     # ----------------------------------------------------------------------------------------------------------------------
     def load_labels(self):
-        with open(self.label_path, "r") as ground_truth:
-            line = ground_truth.readline()
-            while line:
-                line = line.split(",")
-                image_path = "training/" + line[0] + ".jpg"
-                # input image
-                img = cv2.imread(image_path, cv2.IMREAD_COLOR)
-                # find image size
-                current_y, current_x = img.shape[0:2]
-                if (current_x < min_x):
-                    min_x = current_x
-                if (current_y < min_y):
-                    min_y = current_y
-                # coordinate lists
-                bud = line[1].split(";")
-
-                flower = line[2].split(";")
-                fruit = line[3].split("\n")[0].split(";")
-                # draw bud
-                for item in bud:
-                    # only tries to read the coordinates when they are not empty
-                    if item != " ":
-                        x = int(item.split("_")[0])
-                        y = int(item.split("_")[1])
-                        cv2.circle(img, (x, y), 63, (0, 0, 255), 3)
-                # draw flower
-                for item in flower:
-                    if item != " ":
-                        x = int(item.split("_")[0])
-                        y = int(item.split("_")[1])
-                        cv2.circle(img, (x, y), 63, (0, 255, 0), 3)
-                # draw flower
-                for item in fruit:
-                    if item != " ":
-                        x = int(item.split("_")[0])
-                        y = int(item.split("_")[1])
-                        cv2.circle(img, (x, y), 63, (255, 0, 0), 3)
-                # save image
-                cv2.imwrite("ground_truth/" + line[0] + ".jpg", img)
-                # sample_size += 1
-                line = ground_truth.readline()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        # whether we want to rebuild the label
         cache_file = os.path.join(
-            self.cache_path, 'pascal_' + self.phase + '_gt_labels.pkl')
+            self.cache_path, 'herb_' + self.phase + '_gt_labels.pkl')
 
         if os.path.isfile(cache_file) and not self.rebuild:
             print('Loading gt_labels from: ' + cache_file)
             with open(cache_file, 'rb') as f:
                 gt_labels = pickle.load(f)
             return gt_labels
-
-        print('Processing gt_labels from: ' + self.data_path)
-
         if not os.path.exists(self.cache_path):
             os.makedirs(self.cache_path)
 
-        if self.phase == 'train':
-            txtname = os.path.join(
-                self.data_path, 'ImageSets', 'Main', 'trainval.txt')
-        else:
-            txtname = os.path.join(
-                self.data_path, 'ImageSets', 'Main', 'test.txt')
-        with open(txtname, 'r') as f:
-            self.image_index = [x.strip() for x in f.readlines()]
-
         gt_labels = []
-        for index in self.image_index:
-            label, num = self.load_pascal_annotation(index)
-            if num == 0:
-                continue
-            imname = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
-            gt_labels.append({'imname': imname,
-                              'label': label,
-                              'flipped': False})
-        print('Saving gt_labels to: ' + cache_file)
-        with open(cache_file, 'wb') as f:
-            pickle.dump(gt_labels, f)
+        print('Processing gt_labels from: ' + self.data_path)
+        with open(self.label_path, "r") as ground_truth:
+            line = ground_truth.readline()
+            while line:
+                line = line.split(",")
+                processed_line = self.process_line(line)
+                gt_labels.append(processed_line)
+                line = ground_truth.readline()
         return gt_labels
-
-    def load_pascal_annotation(self, index):
-        """
-        Load image and bounding boxes info from XML file in the PASCAL VOC
-        format.
-        """
-
-        imname = os.path.join(self.data_path, 'JPEGImages', index + '.jpg')
-        im = cv2.imread(imname)
-        h_ratio = 1.0 * self.image_size / im.shape[0]
-        w_ratio = 1.0 * self.image_size / im.shape[1]
-        # im = cv2.resize(im, [self.image_size, self.image_size])
-
-        label = np.zeros((self.cell_size, self.cell_size, 25))
-        filename = os.path.join(self.data_path, 'Annotations', index + '.xml')
-        tree = ET.parse(filename)
-        objs = tree.findall('object')
-
-        for obj in objs:
-            bbox = obj.find('bndbox')
-            # Make pixel indexes 0-based
-            x1 = max(min((float(bbox.find('xmin').text) - 1) * w_ratio, self.image_size - 1), 0)
-            y1 = max(min((float(bbox.find('ymin').text) - 1) * h_ratio, self.image_size - 1), 0)
-            x2 = max(min((float(bbox.find('xmax').text) - 1) * w_ratio, self.image_size - 1), 0)
-            y2 = max(min((float(bbox.find('ymax').text) - 1) * h_ratio, self.image_size - 1), 0)
-            cls_ind = self.class_to_ind[obj.find('name').text.lower().strip()]
-            boxes = [(x2 + x1) / 2.0, (y2 + y1) / 2.0, x2 - x1, y2 - y1]
-            x_ind = int(boxes[0] * self.cell_size / self.image_size)
-            y_ind = int(boxes[1] * self.cell_size / self.image_size)
-            if label[y_ind, x_ind, 0] == 1:
-                continue
-            label[y_ind, x_ind, 0] = 1
-            label[y_ind, x_ind, 1:5] = boxes
-            label[y_ind, x_ind, 5 + cls_ind] = 1
-
-        return label, len(objs)
