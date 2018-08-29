@@ -192,6 +192,8 @@ class Detector(object):
 
         self.draw_result(image, result)
         cv2.imshow('Image', image)
+        #save the output image
+        cv2.imwrite("output.jpg", image)
         cv2.waitKey(wait)
 
 # ----------------------------------------------------------------------------------------------------------------------
