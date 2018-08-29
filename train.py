@@ -158,7 +158,7 @@ def main():
     parser.add_argument('--data_dir', default="training", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
-    parser.add_argument('--gpu', default=0, type=str)   #
+    parser.add_argument('--gpu', default="0", type=str)   #
     args = parser.parse_args()
 
     if args.gpu is not None:
