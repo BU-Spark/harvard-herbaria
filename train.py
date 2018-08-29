@@ -154,7 +154,7 @@ def update_config_paths(data_dir, weights_file):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default=None, type=str)
+    parser.add_argument('--weights', default='', type=str)
     parser.add_argument('--data_dir', default="data", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
