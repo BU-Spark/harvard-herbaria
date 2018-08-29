@@ -133,7 +133,7 @@ class Solver(object):
                     datetime.datetime.now().strftime('%m-%d %H:%M:%S'),
                     self.output_dir))
                 self.saver.save(
-                    self.sess, self.ckpt_file, global_step=self.global_step)
+                    self.sess, self.ckpt_file, global_step=self.global_step)   #filename contains global step
     #-------------------------------------------------------------------------------------------------------------------
     # Save configuration data
     # ------------------------------------------------------------------------------------------------------------------

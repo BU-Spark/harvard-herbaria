@@ -9,8 +9,8 @@ from timer import Timer
 #----------------------------------------------------------------------------------------------------------------------
 # Author: Siqi Zhang
 # Date: Aug 20th, 2018
-# Description: This is the file for testing purpose
-# Input: Images
+# Description: This is the file for testing the object detector
+# Input: Single image in RGB
 # Output: Images with points marked
 #----------------------------------------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ class Detector(object):
         self.cell_num = cfg.CELL_NUM
         self.centers_per_cell = cfg.CENTERS_PER_CELL
         self.threshold = cfg.THRESHOLD
-        self.iou_threshold = cfg.IOU_THRESHOLD
+        self.dist_threshold = cfg.IOU_THRESHOLD
         self.boundary1 = self.cell_num * self.cell_num * self.num_class
         self.boundary2 = self.boundary1 + \
                          self.cell_num * self.cell_num * self.centers_per_cell
@@ -45,15 +45,18 @@ class Detector(object):
         for i in range(len(result)):
             x = int(result[i][1])
             y = int(result[i][2])
-
-            cv2.rectangle(img, (x - w, y - h), (x + w, y + h), (0, 255, 0), 2)
-            cv2.rectangle(img, (x - w, y - h - 20),
-                          (x + w, y - h), (125, 125, 125), -1)
-            lineType = cv2.LINE_AA if cv2.__version__ > '3' else cv2.CV_AA
-            cv2.putText(
-                img, result[i][0] + ' : %.2f' % result[i][5],
-                (x - w + 5, y - h - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                (0, 0, 0), 1, lineType)
+            # determine the object type
+            color_code = (0,0,0)
+            if (result[i][0] == 0):
+                # bud -> red
+                color_code = (0, 0, 255)
+            elif (result[i][0] == 1):
+                # flower -> green
+                color_code = (0, 255, 0)
+            else:
+                # fruit -> blue
+                color_code = (255, 0, 0)
+            cv2.circle(img, (x, y), 63, color_code, 3)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # try to detect features on the given input image, one image
@@ -67,16 +70,15 @@ class Detector(object):
 
         result = self.detect_from_cvmat(inputs)[0]
 
+        # scaling back to the the size of input image
         for i in range(len(result)):
             result[i][1] *= (1.0 * img_w / self.image_size)
             result[i][2] *= (1.0 * img_h / self.image_size)
-            result[i][3] *= (1.0 * img_w / self.image_size)
-            result[i][4] *= (1.0 * img_h / self.image_size)
 
         return result
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Dect
+# Pass the image through the network
 # ----------------------------------------------------------------------------------------------------------------------
     def detect_from_cvmat(self, inputs):
         net_output = self.sess.run(self.net.logits,
@@ -87,18 +89,24 @@ class Detector(object):
 
         return results
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Process the prediction by applying non maxima suppression
+# ----------------------------------------------------------------------------------------------------------------------
     def interpret_output(self, output):
+        # predicted conditional probabilities
         probs = np.zeros((self.cell_num, self.cell_num,
                           self.centers_per_cell, self.num_class))
         class_probs = np.reshape(
             output[0:self.boundary1],
             (self.cell_num, self.cell_num, self.num_class))
+        # predicted object probability
         scales = np.reshape(
             output[self.boundary1:self.boundary2],
             (self.cell_num, self.cell_num, self.centers_per_cell))
-        boxes = np.reshape(
+        # predicted coordinate
+        centers = np.reshape(
             output[self.boundary2:],
-            (self.cell_num, self.cell_num, self.centers_per_cell, 4))
+            (self.cell_num, self.cell_num, self.centers_per_cell, 2))
         offset = np.array(
             [np.arange(self.cell_num)] * self.cell_num * self.centers_per_cell)
         offset = np.transpose(
@@ -107,64 +115,71 @@ class Detector(object):
                 [self.centers_per_cell, self.cell_num, self.cell_num]),
             (1, 2, 0))
 
-        boxes[:, :, :, 0] += offset
-        boxes[:, :, :, 1] += np.transpose(offset, (1, 0, 2))
-        boxes[:, :, :, :2] = 1.0 * boxes[:, :, :, 0:2] / self.cell_num
-        boxes[:, :, :, 2:] = np.square(boxes[:, :, :, 2:])
+        # scale the predictions back to the original input image size
+        centers[:, :, :, 0] += offset
+        centers[:, :, :, 1] += np.transpose(offset, (1, 0, 2))
+        centers[:, :, :, :2] = 1.0 * centers[:, :, :, 0:2] / self.cell_num
 
-        boxes *= self.image_size
+        centers *= self.image_size
 
         for i in range(self.centers_per_cell):
             for j in range(self.num_class):
                 probs[:, :, i, j] = np.multiply(
                     class_probs[:, :, j], scales[:, :, i])
 
+        #compute the unconditional class probability and throw the predictions with low probility.
         filter_mat_probs = np.array(probs >= self.threshold, dtype='bool')
-        filter_mat_boxes = np.nonzero(filter_mat_probs)
-        boxes_filtered = boxes[filter_mat_boxes[0],
-                               filter_mat_boxes[1], filter_mat_boxes[2]]
+        filter_mat_centers = np.nonzero(filter_mat_probs)
+        centers_filtered = centers[filter_mat_centers[0],
+                               filter_mat_centers[1], filter_mat_centers[2]]
         probs_filtered = probs[filter_mat_probs]
         classes_num_filtered = np.argmax(
             filter_mat_probs, axis=3)[
-            filter_mat_boxes[0], filter_mat_boxes[1], filter_mat_boxes[2]]
+            filter_mat_centers[0], filter_mat_centers[1], filter_mat_centers[2]]
 
+        # sort the probability from high to low
         argsort = np.array(np.argsort(probs_filtered))[::-1]
-        boxes_filtered = boxes_filtered[argsort]
+        centers_filtered = centers_filtered[argsort]
         probs_filtered = probs_filtered[argsort]
         classes_num_filtered = classes_num_filtered[argsort]
 
-        for i in range(len(boxes_filtered)):
+        for i in range(len(centers_filtered)):
             if probs_filtered[i] == 0:
                 continue
-            for j in range(i + 1, len(boxes_filtered)):
-                if self.iou(boxes_filtered[i], boxes_filtered[j]) > self.iou_threshold:
+            for j in range(i + 1, len(centers_filtered)):
+                if self.calc_dist(centers_filtered[i], centers_filtered[j]) < self.dist_threshold:
                     probs_filtered[j] = 0.0
 
-        filter_iou = np.array(probs_filtered > 0.0, dtype='bool')
-        boxes_filtered = boxes_filtered[filter_iou]
-        probs_filtered = probs_filtered[filter_iou]
-        classes_num_filtered = classes_num_filtered[filter_iou]
+        # create the filtering mask
+        filter_dist = np.array(probs_filtered > 0.0, dtype='bool')
+        centers_filtered = centers_filtered[filter_dist]
+        probs_filtered = probs_filtered[filter_dist]
+        classes_num_filtered = classes_num_filtered[filter_dist]
 
         result = []
-        for i in range(len(boxes_filtered)):
+        # format the output
+        for i in range(len(centers_filtered)):
             result.append(
-                [self.classes[classes_num_filtered[i]],
-                 boxes_filtered[i][0],
-                 boxes_filtered[i][1],
-                 boxes_filtered[i][2],
-                 boxes_filtered[i][3],
+                [classes_num_filtered[i],      # integer class type
+                 centers_filtered[i][0],
+                 centers_filtered[i][1],
                  probs_filtered[i]])
 
         return result
 
-    def iou(self, box1, box2):
-        tb = min(box1[0] + 0.5 * box1[2], box2[0] + 0.5 * box2[2]) - \
-            max(box1[0] - 0.5 * box1[2], box2[0] - 0.5 * box2[2])
-        lr = min(box1[1] + 0.5 * box1[3], box2[1] + 0.5 * box2[3]) - \
-            max(box1[1] - 0.5 * box1[3], box2[1] - 0.5 * box2[3])
-        inter = 0 if tb < 0 or lr < 0 else tb * lr
-        return inter / (box1[2] * box1[3] + box2[2] * box2[3] - inter)
+# ----------------------------------------------------------------------------------------------------------------------
+# Compute the distance of two centers
+# ----------------------------------------------------------------------------------------------------------------------
+    def calc_dist(self, center1, center2):
+        distance = tf.sqrt((center1[..., 0] - center2[..., 0]) ** 2 + (center1[..., 1] - center2[..., 1]) ** 2)
+        cell_length = self.image_size/self.cell_num
+        distance = distance / cell_length
+        distance = tf.maximum(distance, 1.0)
+        return tf.clip_by_value(1 - distance, 0.0, 1.0)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# detect the objects in the image
+# ----------------------------------------------------------------------------------------------------------------------
     def image_detector(self, imname, wait=0):
         detect_timer = Timer()
         image = cv2.imread(imname)
@@ -180,13 +195,13 @@ class Detector(object):
         cv2.waitKey(wait)
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Dect
+# main
 # ----------------------------------------------------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', default="YOLO_small.ckpt", type=str)
-    parser.add_argument('--weight_dir', default='weights', type=str)
-    parser.add_argument('--data_dir', default="data", type=str)
+    parser.add_argument('--weight_dir', default='output', type=str)
+    parser.add_argument('--data_dir', default="network", type=str)
     parser.add_argument('--gpu', default='', type=str)
     args = parser.parse_args()
 
@@ -200,7 +215,6 @@ def main():
     # detect from image file
     imname = 'test/person.jpg'
     detector.image_detector(imname)
-
 
 if __name__ == '__main__':
     main()
