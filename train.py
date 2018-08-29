@@ -77,7 +77,7 @@ class Solver(object):
         load_timer = Timer()
 
         for step in range(1, self.max_iter + 1):
-
+            print('training iteration:' + str(step))
             load_timer.tic()
             images, labels = self.data.get()
             load_timer.toc()
@@ -88,9 +88,11 @@ class Solver(object):
                 if step % (self.summary_iter * 10) == 0:
 
                     train_timer.tic()
+                    print('session is running...')
                     summary_str, loss, _ = self.sess.run(
                         [self.summary_op, self.net.total_loss, self.train_op],
                         feed_dict=feed_dict)
+                    print('session is finished.')
                     train_timer.toc()
 
                     log_str = '''{} Epoch: {}, Step: {}, Learning rate: {},'''
@@ -108,16 +110,20 @@ class Solver(object):
 
                 else:
                     train_timer.tic()
+                    print('session is running...')
                     summary_str, _ = self.sess.run(
                         [self.summary_op, self.train_op],
                         feed_dict=feed_dict)
+                    print('session is finished.')
                     train_timer.toc()
 
                 self.writer.add_summary(summary_str, step)
 
             else:
                 train_timer.tic()
+                print('session is running...')
                 self.sess.run(self.train_op, feed_dict=feed_dict)
+                print('session is finished.')
                 train_timer.toc()
 
             if step % self.save_iter == 0:

@@ -9,7 +9,7 @@ from timer import Timer
 #----------------------------------------------------------------------------------------------------------------------
 # Author: Siqi Zhang
 # Date: Aug 20th, 2018
-# Description: contains network configuration parameters
+# Description: This is the file for testing purpose
 # Input: Images
 # Output: Images with points marked
 #----------------------------------------------------------------------------------------------------------------------
@@ -23,13 +23,13 @@ class Detector(object):
         self.classes = cfg.CLASSES
         self.num_class = len(self.classes)
         self.image_size = cfg.IMAGE_SIZE
-        self.cell_size = cfg.CELL_SIZE
-        self.boxes_per_cell = cfg.BOXES_PER_CELL
+        self.cell_num = cfg.CELL_NUM
+        self.centers_per_cell = cfg.CENTERS_PER_CELL
         self.threshold = cfg.THRESHOLD
         self.iou_threshold = cfg.IOU_THRESHOLD
-        self.boundary1 = self.cell_size * self.cell_size * self.num_class
-        self.boundary2 = self.boundary1 +\
-            self.cell_size * self.cell_size * self.boxes_per_cell
+        self.boundary1 = self.cell_num * self.cell_num * self.num_class
+        self.boundary2 = self.boundary1 + \
+                         self.cell_num * self.cell_num * self.centers_per_cell
 
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -38,12 +38,14 @@ class Detector(object):
         self.saver = tf.train.Saver()
         self.saver.restore(self.sess, self.weights_file)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Visualize the detected features on the input image
+# ----------------------------------------------------------------------------------------------------------------------
     def draw_result(self, img, result):
         for i in range(len(result)):
             x = int(result[i][1])
             y = int(result[i][2])
-            w = int(result[i][3] / 2)
-            h = int(result[i][4] / 2)
+
             cv2.rectangle(img, (x - w, y - h), (x + w, y + h), (0, 255, 0), 2)
             cv2.rectangle(img, (x - w, y - h - 20),
                           (x + w, y - h), (125, 125, 125), -1)
@@ -53,6 +55,9 @@ class Detector(object):
                 (x - w + 5, y - h - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                 (0, 0, 0), 1, lineType)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# try to detect features on the given input image, one image
+# ----------------------------------------------------------------------------------------------------------------------
     def detect(self, img):
         img_h, img_w, _ = img.shape
         inputs = cv2.resize(img, (self.image_size, self.image_size))
@@ -70,6 +75,9 @@ class Detector(object):
 
         return result
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Dect
+# ----------------------------------------------------------------------------------------------------------------------
     def detect_from_cvmat(self, inputs):
         net_output = self.sess.run(self.net.logits,
                                    feed_dict={self.net.images: inputs})
@@ -80,33 +88,33 @@ class Detector(object):
         return results
 
     def interpret_output(self, output):
-        probs = np.zeros((self.cell_size, self.cell_size,
-                          self.boxes_per_cell, self.num_class))
+        probs = np.zeros((self.cell_num, self.cell_num,
+                          self.centers_per_cell, self.num_class))
         class_probs = np.reshape(
             output[0:self.boundary1],
-            (self.cell_size, self.cell_size, self.num_class))
+            (self.cell_num, self.cell_num, self.num_class))
         scales = np.reshape(
             output[self.boundary1:self.boundary2],
-            (self.cell_size, self.cell_size, self.boxes_per_cell))
+            (self.cell_num, self.cell_num, self.centers_per_cell))
         boxes = np.reshape(
             output[self.boundary2:],
-            (self.cell_size, self.cell_size, self.boxes_per_cell, 4))
+            (self.cell_num, self.cell_num, self.centers_per_cell, 4))
         offset = np.array(
-            [np.arange(self.cell_size)] * self.cell_size * self.boxes_per_cell)
+            [np.arange(self.cell_num)] * self.cell_num * self.centers_per_cell)
         offset = np.transpose(
             np.reshape(
                 offset,
-                [self.boxes_per_cell, self.cell_size, self.cell_size]),
+                [self.centers_per_cell, self.cell_num, self.cell_num]),
             (1, 2, 0))
 
         boxes[:, :, :, 0] += offset
         boxes[:, :, :, 1] += np.transpose(offset, (1, 0, 2))
-        boxes[:, :, :, :2] = 1.0 * boxes[:, :, :, 0:2] / self.cell_size
+        boxes[:, :, :, :2] = 1.0 * boxes[:, :, :, 0:2] / self.cell_num
         boxes[:, :, :, 2:] = np.square(boxes[:, :, :, 2:])
 
         boxes *= self.image_size
 
-        for i in range(self.boxes_per_cell):
+        for i in range(self.centers_per_cell):
             for j in range(self.num_class):
                 probs[:, :, i, j] = np.multiply(
                     class_probs[:, :, j], scales[:, :, i])
@@ -157,24 +165,6 @@ class Detector(object):
         inter = 0 if tb < 0 or lr < 0 else tb * lr
         return inter / (box1[2] * box1[3] + box2[2] * box2[3] - inter)
 
-    def camera_detector(self, cap, wait=10):
-        detect_timer = Timer()
-        ret, _ = cap.read()
-
-        while ret:
-            ret, frame = cap.read()
-            detect_timer.tic()
-            result = self.detect(frame)
-            detect_timer.toc()
-            print('Average detecting time: {:.3f}s'.format(
-                detect_timer.average_time))
-
-            self.draw_result(frame, result)
-            cv2.imshow('Camera', frame)
-            cv2.waitKey(wait)
-
-            ret, frame = cap.read()
-
     def image_detector(self, imname, wait=0):
         detect_timer = Timer()
         image = cv2.imread(imname)
@@ -189,7 +179,9 @@ class Detector(object):
         cv2.imshow('Image', image)
         cv2.waitKey(wait)
 
-
+# ----------------------------------------------------------------------------------------------------------------------
+# Dect
+# ----------------------------------------------------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', default="YOLO_small.ckpt", type=str)
@@ -200,13 +192,10 @@ def main():
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
+    # construct the network and load trained weights
     yolo = YOLONet(False)
     weight_file = os.path.join(args.data_dir, args.weight_dir, args.weights)
     detector = Detector(yolo, weight_file)
-
-    # detect from camera
-    # cap = cv2.VideoCapture(-1)
-    # detector.camera_detector(cap)
 
     # detect from image file
     imname = 'test/person.jpg'
