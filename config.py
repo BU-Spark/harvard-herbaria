@@ -41,7 +41,7 @@ STAIRCASE = True
 BATCH_SIZE = 45
 MAX_ITER = 15000
 SUMMARY_ITER = 10
-SAVE_ITER = 1000
+SAVE_ITER = 1
 #
 # test parameter
 #

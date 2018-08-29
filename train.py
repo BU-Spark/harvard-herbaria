@@ -44,7 +44,7 @@ class Solver(object):
 
         self.variable_to_restore = tf.global_variables()
         self.saver = tf.train.Saver(self.variable_to_restore, max_to_keep=None)
-        self.ckpt_file = os.path.join(self.output_dir, 'yolo')
+        self.ckpt_file = os.path.join(self.output_dir, 'yolo.ckpt')
         self.summary_op = tf.summary.merge_all()
         self.writer = tf.summary.FileWriter(self.output_dir, flush_secs=60)
 
@@ -64,8 +64,10 @@ class Solver(object):
         self.sess.run(tf.global_variables_initializer())
 
         if self.weights_file is not None:
-            print('Restoring weights from: ' + self.weights_file)
-            self.saver.restore(self.sess, self.weights_file)
+            # convert to absolute path
+            abs_path = os.path.abspath(self.weights_file)
+            print('Restoring weights from: ' + abs_path)
+            self.saver.restore(self.sess, abs_path)
 
         self.writer.add_graph(self.sess.graph)
     #-------------------------------------------------------------------------------------------------------------------
@@ -154,14 +156,19 @@ def update_config_paths(data_dir, weights_file):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default='', type=str)
+    parser.add_argument('--weights', default='2018_08_29_11_06/yolo.ckpt-1', type=str)
     parser.add_argument('--data_dir', default="training", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
     parser.add_argument('--gpu', default="0", type=str)   #
     args = parser.parse_args()
 
+    # try to restore the training from checkpoint file
+    if args.weights is not None:
+        cfg.WEIGHTS_FILE  = os.path.join(cfg.OUTPUT_DIR, args.weights)
+
     if args.gpu is not None:
+        print("training with GPU id: " + args.gpu)
         cfg.GPU = args.gpu
 
     if args.data_dir != cfg.DATA_PATH:
