@@ -187,5 +187,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # python train.py --weights YOLO_small.ckpt --gpu 0
     main()
