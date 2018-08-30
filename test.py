@@ -26,7 +26,7 @@ class Detector(object):
         self.cell_num = cfg.CELL_NUM
         self.centers_per_cell = cfg.CENTERS_PER_CELL
         self.threshold = cfg.THRESHOLD
-        self.dist_threshold = cfg.IOU_THRESHOLD
+        self.dist_threshold = cfg.DIST_THRESHOLD
         self.boundary1 = self.cell_num * self.cell_num * self.num_class
         self.boundary2 = self.boundary1 + \
                          self.cell_num * self.cell_num * self.centers_per_cell
@@ -201,7 +201,7 @@ class Detector(object):
 # ----------------------------------------------------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default="YOLO_small.ckpt", type=str)
+    parser.add_argument('--weights', default='2018_08_29_11_06/yolo.ckpt-1', type=str)
     parser.add_argument('--weight_dir', default='output', type=str)
     parser.add_argument('--data_dir', default="network", type=str)
     parser.add_argument('--gpu', default='', type=str)
@@ -211,11 +211,11 @@ def main():
 
     # construct the network and load trained weights
     yolo = YOLONet(False)
-    weight_file = os.path.join(args.data_dir, args.weight_dir, args.weights)
+    weight_file = os.path.join(args.data_dir, args.weight_dir,args.weights)
     detector = Detector(yolo, weight_file)
 
     # detect from image file
-    imname = 'test/person.jpg'
+    imname = 'training/Anemone_canadensis.88485.3642.jpg'
     detector.image_detector(imname)
 
 if __name__ == '__main__':

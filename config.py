@@ -46,4 +46,4 @@ SAVE_ITER = 1
 # test parameter
 #
 THRESHOLD = 0.2
-IOU_THRESHOLD = 0.5
+DIST_THRESHOLD = 0.5
