@@ -85,8 +85,8 @@ class Detector(object):
                                    feed_dict={self.net.images: inputs})
         results = []
         for i in range(net_output.shape[0]):
-            results.append(self.interpret_output(net_output[i]))
-
+            result = self.interpret_output(net_output[i])
+            results.append(result)
         return results
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -114,7 +114,6 @@ class Detector(object):
                 offset,
                 [self.centers_per_cell, self.cell_num, self.cell_num]),
             (1, 2, 0))
-
         # scale the predictions back to the original input image size
         centers[:, :, :, 0] += offset
         centers[:, :, :, 1] += np.transpose(offset, (1, 0, 2))
@@ -126,7 +125,6 @@ class Detector(object):
             for j in range(self.num_class):
                 probs[:, :, i, j] = np.multiply(
                     class_probs[:, :, j], scales[:, :, i])
-
         #compute the unconditional class probability and throw the predictions with low probility.
         filter_mat_probs = np.array(probs >= self.threshold, dtype='bool')
         filter_mat_centers = np.nonzero(filter_mat_probs)
@@ -169,13 +167,15 @@ class Detector(object):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Compute the distance of two centers
+# Center1 and center2 are 2-d vector
 # ----------------------------------------------------------------------------------------------------------------------
     def calc_dist(self, center1, center2):
-        distance = tf.sqrt((center1[..., 0] - center2[..., 0]) ** 2 + (center1[..., 1] - center2[..., 1]) ** 2)
+        distance = np.sqrt((center1[0] - center2[0]) ** 2 + (center1[1] - center2[1]) ** 2)
         cell_length = self.image_size/self.cell_num
-        distance = distance / cell_length
-        distance = tf.maximum(distance, 1.0)
-        return tf.clip_by_value(1 - distance, 0.0, 1.0)
+        distance = distance / (2 * cell_length)
+        distance = np.clip(distance, 0.0, 1.0)
+        # clip the value
+        return 1 - distance
 
 # ----------------------------------------------------------------------------------------------------------------------
 # detect the objects in the image
@@ -191,10 +191,8 @@ class Detector(object):
             detect_timer.average_time))
 
         self.draw_result(image, result)
-        cv2.imshow('Image', image)
         #save the output image
         cv2.imwrite("output.jpg", image)
-        cv2.waitKey(wait)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # main

@@ -133,7 +133,7 @@ class YOLONet(object):
 # ----------------------------------------------------------------------------------------------------------------------
     def calc_dist(self, centers1, centers2, scope='iou'):
         """calculate the distance evaluation of two centers
-           It is computed by 1 -  argmax({sqrt[(x_1 - x_2)^2 + (y_1 - y_2)^2] / 2 * cell_size}, 1}
+           It is computed by 1 - max({sqrt[(x_1 - x_2)^2 + (y_1 - y_2)^2] / 2 * cell_length}, 1}
            i.e. The closer they are, the more confident the prediction is
         Args:
           centers1: 5-D tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, CENTERS_PER_CELL, 2]  ====> (x_center, y_center)
@@ -144,7 +144,7 @@ class YOLONet(object):
         with tf.variable_scope(scope):
             distance = tf.sqrt((centers1[..., 0] - centers2[..., 0]) ** 2 + (centers1[..., 1] - centers2[..., 1]) ** 2)
             cell_length = self.image_size/self.cell_num
-            distance = distance / cell_length
+            distance = distance / (2 * cell_length)
             distance = tf.maximum(distance, 1.0)
         return tf.clip_by_value(1 - distance, 0.0, 1.0)
 
