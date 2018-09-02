@@ -13,6 +13,8 @@ import config as cfg
 #                 coordinates are spiltted by underscore
 #               2.executable and csv are in the same directory
 #               3.there are three classes: bud, flower and fruit.
+# Note: The ground_truth label is ordered as[Pr, x, y, class_1, class_2, class_3]
+#       The prediction is ordered as [class_1, class_2, class_3, Pr, x, y]
 #----------------------------------------------------------------------------------------------------------------------
 slim = tf.contrib.slim
 
@@ -170,7 +172,6 @@ class YOLONet(object):
             response = tf.reshape(
                 labels[..., 0],
                 [self.batch_size, self.cell_num, self.cell_num, 1])
-            print(tf.shape(labels))
             # center coordinates of objects
             centers = tf.reshape(
                 labels[..., 1:3],
@@ -192,7 +193,7 @@ class YOLONet(object):
             dist_predict_truth = self.calc_dist(predict_centers_tran, centers)
 
             # calculate I tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
-            # find the
+            # find the centers with the highest probability within the centers
             object_mask = tf.reduce_max(dist_predict_truth, 3, keepdims=True)
             object_mask = tf.cast(
                 (dist_predict_truth >= object_mask), tf.float32) * response
@@ -242,8 +243,6 @@ class YOLONet(object):
 
             tf.summary.histogram('centers_delta_x', centers_delta[..., 0])
             tf.summary.histogram('centers_delta_y', centers_delta[..., 1])
-            tf.summary.histogram('iou', dist_predict_truth)
-
 
 def leaky_relu(alpha):
     def op(inputs):

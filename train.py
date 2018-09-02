@@ -36,8 +36,8 @@ class Solver(object):
         self.summary_iter = cfg.SUMMARY_ITER
         self.save_iter = cfg.SAVE_ITER
 
-        self.output_dir = os.path.join(
-            cfg.OUTPUT_DIR, datetime.datetime.now().strftime('%Y_%m_%d_%H_%M'))
+        self.output_dir = os.path.abspath(os.path.join(
+            cfg.OUTPUT_DIR, datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')))
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         self.save_cfg()
@@ -57,12 +57,14 @@ class Solver(object):
         self.train_op = slim.learning.create_train_op(
             self.net.total_loss, self.optimizer, global_step=self.global_step)
 
+        # turn on the GPU
         gpu_options = tf.GPUOptions()
         config = tf.ConfigProto(gpu_options=gpu_options)
+        config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         # variable initialization
         self.sess.run(tf.global_variables_initializer())
-
+        
         if self.weights_file is not None:
             # convert to absolute path
             abs_path = os.path.abspath(self.weights_file)
@@ -156,12 +158,13 @@ def update_config_paths(data_dir, weights_file):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default='2018_08_29_11_06/yolo.ckpt-1', type=str)
+    parser.add_argument('--weights', default=None, type=str)
     parser.add_argument('--data_dir', default="training", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
     parser.add_argument('--gpu', default="0", type=str)   #
     args = parser.parse_args()
+
 
     # try to restore the training from checkpoint file
     if args.weights is not None:

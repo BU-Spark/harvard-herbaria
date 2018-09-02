@@ -39,11 +39,11 @@ DECAY_RATE = 0.1
 STAIRCASE = True
 #size of training samples batch: for this project, we only use one batch
 BATCH_SIZE = 45
-MAX_ITER = 15000
+MAX_ITER = 20000
 SUMMARY_ITER = 10
-SAVE_ITER = 1
+SAVE_ITER = 1000
 #
 # test parameter
 #
-THRESHOLD = 1.0e-15 #0.2
-DIST_THRESHOLD =1.0e-15#0.5
+THRESHOLD = 0.2
+DIST_THRESHOLD = 0.5
