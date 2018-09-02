@@ -26,7 +26,7 @@ def get_n_cores():
     nslots = os.getenv('NSLOTS')
     if nslots is not None:
         return int(nslots)
-  raise ValueError('Environment variable NSLOTS is not defined.')
+    raise ValueError('Environment variable NSLOTS is not defined.')
     
 slim = tf.contrib.slim
 class Solver(object):
