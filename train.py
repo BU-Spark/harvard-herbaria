@@ -19,9 +19,16 @@ from image_voc import image_voc
 #               2.executable and csv are in the same directory
 #               3.there are three classes: bud, flower and fruit.
 #----------------------------------------------------------------------------------------------------------------------
+
+# Get the assiged number of cores for this job. This is stored in
+# the NSLOTS variable, If NSLOTS is not defined throw an exception.
+def get_n_cores():  
+    nslots = os.getenv('NSLOTS')
+    if nslots is not None:
+        return int(nslots)
+  raise ValueError('Environment variable NSLOTS is not defined.')
+    
 slim = tf.contrib.slim
-
-
 class Solver(object):
 
     def __init__(self, net, data):
@@ -59,7 +66,7 @@ class Solver(object):
 
         # turn on the GPU
         gpu_options = tf.GPUOptions()
-        config = tf.ConfigProto(gpu_options=gpu_options)
+        config = tf.ConfigProto(intra_op_parallelism_threads=get_n_cores() - 1, inter_op_parallelism_threads = 1, allow_soft_placement = True, log_device_placement = True)
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         # variable initialization
