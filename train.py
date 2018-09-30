@@ -2,6 +2,7 @@ import os
 import argparse
 import datetime
 import tensorflow as tf
+import numpy as np
 import config as cfg
 from YOLO_network import YOLONet
 from timer import Timer
@@ -32,7 +33,7 @@ slim = tf.contrib.slim
 class Solver(object):
 
     def __init__(self, net, data):
-        self.net = net
+        self.net = net 
         self.data = data
         self.weights_file = cfg.WEIGHTS_FILE
         self.max_iter = cfg.MAX_ITER
@@ -65,8 +66,11 @@ class Solver(object):
             self.net.total_loss, self.optimizer, global_step=self.global_step)
 
         # turn on the GPU
-        gpu_options = tf.GPUOptions()
-        config = tf.ConfigProto(intra_op_parallelism_threads=get_n_cores() - 1, inter_op_parallelism_threads = 1, allow_soft_placement = True, log_device_placement = True)
+        config = tf.ConfigProto(
+            intra_op_parallelism_threads=get_n_cores()-1,
+            inter_op_parallelism_threads=1,
+            allow_soft_placement=True, 
+            log_device_placement=True)
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         # variable initialization
@@ -94,9 +98,8 @@ class Solver(object):
             load_timer.toc()
             feed_dict = {self.net.images: images,
                          self.net.labels: labels}
-
             if step % self.summary_iter == 0:
-                if step % (self.summary_iter * 10) == 0:
+                if step % (100) == 0:
 
                     train_timer.tic()
                     print('session is running...')
@@ -106,7 +109,7 @@ class Solver(object):
                     print('session is finished.')
                     train_timer.toc()
 
-                    log_str = "{} Epoch: {}, Step: {}, Learning rate: {},Loss: {:5.3f}\nSpeed: {:.3f}s/iter, Load: {:.3f}s/iter, Remain: {}".format(
+                    log_str = "{} Epoch: {}, Step: {}, Learning rate: {}, Loss: {:5.3f}\nSpeed: {:.3f}s/iter,Load: {:.3f}s/iter, Remain: {}".format(
                         datetime.datetime.now().strftime('%m-%d %H:%M:%S'),
                         self.data.epoch,
                         int(step),
@@ -167,7 +170,7 @@ def main():
     parser.add_argument('--data_dir', default="training", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
-    parser.add_argument('--gpu', default="0", type=str)   #
+    parser.add_argument('--gpu', default="1", type=str)   #
     args = parser.parse_args()
 
 
@@ -182,7 +185,7 @@ def main():
     if args.data_dir != cfg.DATA_PATH:
         update_config_paths(args.data_dir, args.weights)
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = cfg.GPU
+    #os.environ['CUDA_VISIBLE_DEVICES'] = cfg.GPU
 
     yolo = YOLONet()
     images = image_voc('train')
@@ -192,7 +195,6 @@ def main():
     print('Start training ...')
     solver.train()
     print('Done training.')
-
 
 if __name__ == '__main__':
     main()

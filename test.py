@@ -69,7 +69,6 @@ class Detector(object):
         inputs = np.reshape(inputs, (1, self.image_size, self.image_size, 3))
 
         result = self.detect_from_cvmat(inputs)[0]
-
         # scaling back to the the size of input image
         for i in range(len(result)):
             result[i][1] *= (1.0 * img_w / self.image_size)
@@ -81,8 +80,13 @@ class Detector(object):
 # Pass the image through the network
 # ----------------------------------------------------------------------------------------------------------------------
     def detect_from_cvmat(self, inputs):
+        temp1 = self.sess.run(self.net.logits,
+                                   feed_dict={self.net.images: inputs})
+        inputs = np.ones((1,576,576,3)) * 0.5 
         net_output = self.sess.run(self.net.logits,
                                    feed_dict={self.net.images: inputs})
+        diff = np.sum(np.absolute(temp1 - net_output))
+        #print(diff)
         results = []
         for i in range(net_output.shape[0]):
             result = self.interpret_output(net_output[i])
@@ -145,6 +149,7 @@ class Detector(object):
             if probs_filtered[i] == 0:
                 continue
             for j in range(i + 1, len(centers_filtered)):
+                # zero-out the centers that are too close
                 if self.calc_dist(centers_filtered[i], centers_filtered[j]) < self.dist_threshold:
                     probs_filtered[j] = 0.0
 
@@ -175,7 +180,7 @@ class Detector(object):
         distance = distance / (2 * cell_length)
         distance = np.clip(distance, 0.0, 1.0)
         # clip the value
-        return 1 - distance
+        return distance
 
 # ----------------------------------------------------------------------------------------------------------------------
 # detect the objects in the image
@@ -199,7 +204,7 @@ class Detector(object):
 # ----------------------------------------------------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default='2018_08_29_11_06/yolo.ckpt-1', type=str)
+    parser.add_argument('--weights', default='model/yolo.ckpt-1', type=str)
     parser.add_argument('--weight_dir', default='output', type=str)
     parser.add_argument('--data_dir', default="network", type=str)
     parser.add_argument('--gpu', default='', type=str)
@@ -213,7 +218,10 @@ def main():
     detector = Detector(yolo, weight_file)
 
     # detect from image file
-    imname = 'training/Anemone_canadensis.88485.3642.jpg'
+    imname = 'training/Hemerocallis_fulva.64717.2497.jpg'
+    #imname = 'training/Aquilegia_canadensis.64305.2543.jpg'
+    #imname = 'Anemone_canadensis.1424111.36692.jpg'
+    #imname = 'Cat03.jpg'
     detector.image_detector(imname)
 
 if __name__ == '__main__':

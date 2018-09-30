@@ -78,7 +78,9 @@ class image_voc(object):
     def process_line(self, line):
         label = np.zeros((self.cell_num, self.cell_num, 6))
         # parse the line
-        image_path = "training/" + line[0] + ".jpg"
+        # get the specie name 
+        species = line[0].split(".")[0]
+        image_path = "images/" + species + "/"+line[0]
         # input image
         img = cv2.imread(image_path, cv2.IMREAD_COLOR)
         # compute the ratio of the length and with of the shrunk image over original image
@@ -92,11 +94,14 @@ class image_voc(object):
         # x,y are converted to the
         for item in bud:
             if item != " ":
-                x = int(item.split("_")[0]) * w_ratio
-                y = int(item.split("_")[1]) * h_ratio
+                x = float(item.split("_")[0]) * w_ratio
+                y = float(item.split("_")[1]) * h_ratio
                 # find the cell that this point belongs to
                 x_cell = int(np.floor(x / self.cell_size))
                 y_cell = int(np.floor(y / self.cell_size))
+                # if the coordinates go out of bound, do not use this 
+                if x_cell >= self.cell_num or y_cell >= self.cell_num:
+                    continue
                 # determine whether this cell has been occupied i.e. probability of existing object == 1
                 # unassigned cell
                 if label[x_cell,y_cell,0] == 0:
@@ -104,15 +109,18 @@ class image_voc(object):
                     label[x_cell, y_cell, 1] = x
                     label[x_cell, y_cell, 2] = y
                     # this is a bud
-                    label[x_cell, y_cell, 3] = 0
+                    label[x_cell, y_cell, 3] = 1
         # draw flower
         for item in flower:
             if item != " ":
-                x = int(item.split("_")[0]) * w_ratio
-                y = int(item.split("_")[1]) * h_ratio
+                x = float(item.split("_")[0]) * w_ratio
+                y = float(item.split("_")[1]) * h_ratio
                 # find the cell that this point belongs to
                 x_cell = int(np.floor(x / self.cell_size))
                 y_cell = int(np.floor(y / self.cell_size))
+                # if the coordinates go out of bound, do not use this 
+                if x_cell >= self.cell_num or y_cell >= self.cell_num:
+                    continue
                 # determine whether this cell has been occupied i.e. probability of existing object == 1
                 # unassigned cell
                 if label[x_cell,y_cell,0] == 0:
@@ -120,15 +128,18 @@ class image_voc(object):
                     label[x_cell, y_cell, 1] = x
                     label[x_cell, y_cell, 2] = y
                     # this is a flower
-                    label[x_cell, y_cell, 3] = 1
+                    label[x_cell, y_cell, 4] = 1
         # draw flower
         for item in fruit:
             if item != " ":
-                x = int(item.split("_")[0]) * w_ratio
-                y = int(item.split("_")[1]) * h_ratio
+                x = float(item.split("_")[0]) * w_ratio
+                y = float (item.split("_")[1]) * h_ratio
                 # find the cell that this point belongs to
                 x_cell = int(np.floor(x / self.cell_size))
                 y_cell = int(np.floor(y / self.cell_size))
+                # if the coordinates go out of bound, do not use this 
+                if x_cell >= self.cell_num or y_cell >= self.cell_num:
+                    continue
                 # determine whether this cell has been occupied i.e. probability of existing object == 1
                 # unassigned cell
                 if label[x_cell, y_cell, 0] == 0:
@@ -136,7 +147,7 @@ class image_voc(object):
                     label[x_cell, y_cell, 1] = x
                     label[x_cell, y_cell, 2] = y
                     # this is a fruit
-                    label[x_cell, y_cell, 3] = 2
+                    label[x_cell, y_cell, 5] = 1
         return {'imname': image_path, 'label': label}
     # ----------------------------------------------------------------------------------------------------------------------
     # load labels from txt file and convert the coordinates into groudtruth

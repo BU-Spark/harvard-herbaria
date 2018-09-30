@@ -26,6 +26,7 @@ class YOLONet(object):
         self.num_class = len(self.classes)
         self.image_size = cfg.IMAGE_SIZE
         self.cell_num = cfg.CELL_NUM
+        self.dist_threshold = cfg.DIST_THRESHOLD
         self.centers_per_cell = cfg.CENTERS_PER_CELL
         # The format of the output: it predicts x,y and probability being an object(3 parameters) and the conditional
         # probability of being a particular class provided being an object(3 parameters here).
@@ -86,8 +87,10 @@ class YOLONet(object):
                 net = tf.pad(
                     images, np.array([[0, 0], [3, 3], [3, 3], [0, 0]]),
                     name='pad_1')
+                
                 net = slim.conv2d(
                     net, 64, 7, 2, padding='VALID', scope='conv_2')
+                
                 net = slim.max_pool2d(net, 2, padding='SAME', scope='pool_3')
                 net = slim.conv2d(net, 192, 3, scope='conv_4')
                 net = slim.max_pool2d(net, 2, padding='SAME', scope='pool_5')
@@ -126,6 +129,7 @@ class YOLONet(object):
                 net = slim.dropout(
                     net, keep_prob=keep_prob, is_training=is_training,
                     scope='dropout_35')
+
                 net = slim.fully_connected(
                     net, num_outputs, activation_fn=None, scope='fc_36')
         return net
@@ -146,7 +150,7 @@ class YOLONet(object):
         with tf.variable_scope(scope):
             distance = tf.sqrt((centers1[..., 0] - centers2[..., 0]) ** 2 + (centers1[..., 1] - centers2[..., 1]) ** 2)
             cell_length = self.image_size/self.cell_num
-            distance = distance / (2 * cell_length)
+            distance = distance / (cell_length)
             distance = tf.maximum(distance, 1.0)
         return tf.clip_by_value(1 - distance, 0.0, 1.0)
 
@@ -194,9 +198,9 @@ class YOLONet(object):
 
             # calculate I tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
             # find the centers with the highest probability within the centers
-            object_mask = tf.reduce_max(dist_predict_truth, 3, keepdims=True)
+            best_dist = tf.reduce_max(dist_predict_truth, 3, keepdims=True)
             object_mask = tf.cast(
-                (dist_predict_truth >= object_mask), tf.float32) * response
+                (best_dist > self.dist_threshold), tf.float32)
 
             # calculate no_I tensor [CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
             noobject_mask = tf.ones_like(
@@ -213,19 +217,19 @@ class YOLONet(object):
                 name='class_loss') * self.class_scale
 
             # object_loss
-            object_delta = object_mask * (predict_scales - dist_predict_truth)
+            object_delta = response * (predict_scales - best_dist)
             object_loss = tf.reduce_mean(
                 tf.reduce_sum(tf.square(object_delta), axis=[1, 2, 3]),
                 name='object_loss') * self.object_scale
 
             # noobject_loss
-            noobject_delta = noobject_mask * predict_scales
+            noobject_delta = predict_scales * (tf.ones_like(response, dtype=tf.float32) - response)
             noobject_loss = tf.reduce_mean(
-                tf.reduce_sum(tf.square(noobject_delta), axis=[1, 2, 3]),
+                tf.reduce_sum( noobject_mask * tf.square(noobject_delta), axis=[1, 2, 3]),
                 name='noobject_loss') * self.noobject_scale
 
             # coord_loss
-            coord_mask = tf.expand_dims(object_mask, 4)
+            coord_mask = tf.expand_dims(response, 4)
             centers_delta = coord_mask * (predict_centers - centers_tran)
             coord_loss = tf.reduce_mean(
                 tf.reduce_sum(tf.square(centers_delta), axis=[1, 2, 3, 4]),
