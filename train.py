@@ -23,12 +23,13 @@ from image_voc import image_voc
 
 # Get the assiged number of cores for this job. This is stored in
 # the NSLOTS variable, If NSLOTS is not defined throw an exception.
+'''
 def get_n_cores():  
     nslots = os.getenv('NSLOTS')
     if nslots is not None:
         return int(nslots)
     raise ValueError('Environment variable NSLOTS is not defined.')
-    
+'''
 slim = tf.contrib.slim
 class Solver(object):
 
@@ -67,7 +68,7 @@ class Solver(object):
 
         # turn on the GPU
         config = tf.ConfigProto(
-            intra_op_parallelism_threads=get_n_cores()-1,
+            intra_op_parallelism_threads= 1, #get_n_cores()-1,
             inter_op_parallelism_threads=1,
             allow_soft_placement=True, 
             log_device_placement=True)
@@ -166,11 +167,11 @@ def update_config_paths(data_dir, weights_file):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default=None, type=str)
+    parser.add_argument('--weights', default='weights/YOLO_small.ckpt', type=str)
     parser.add_argument('--data_dir', default="training", type=str)
     parser.add_argument('--threshold', default=0.2, type=float)
     parser.add_argument('--iou_threshold', default=0.5, type=float)
-    parser.add_argument('--gpu', default="1", type=str)   #
+    parser.add_argument('--gpu', default="0", type=str)   #
     args = parser.parse_args()
 
 

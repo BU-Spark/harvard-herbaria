@@ -31,7 +31,7 @@ class YOLONet(object):
         # The format of the output: it predicts x,y and probability being an object(3 parameters) and the conditional
         # probability of being a particular class provided being an object(3 parameters here).
         self.output_size = (self.cell_num * self.cell_num) * \
-                           (self.num_class + self.centers_per_cell * 3)
+                           (self.num_class + self.centers_per_cell * 5)
         self.scale = 1.0 * self.image_size / self.cell_num
 
         self.boundary1 = self.cell_num * self.cell_num * self.num_class
@@ -48,8 +48,8 @@ class YOLONet(object):
         self.alpha = cfg.ALPHA
 
         self.offset = np.transpose(np.reshape(np.array(
-            [np.arange(self.cell_num)] * self.cell_num * self.centers_per_cell),
-            (self.centers_per_cell, self.cell_num, self.cell_num)), (1, 2, 0))
+            [np.arange(self.cell_num)] * self.cell_num * 1),
+            (1, self.cell_num, self.cell_num)), (1, 2, 0))
 
         self.images = tf.placeholder(
             tf.float32, [None, self.image_size, self.image_size, 3],
@@ -168,10 +168,12 @@ class YOLONet(object):
             predict_scales = tf.reshape(
                 predicts[:, self.boundary1:self.boundary2],
                 [self.batch_size, self.cell_num, self.cell_num, self.centers_per_cell])
+            predict_scales = predict_scales[:,:,:,0:1]
             # predicted coordinate
             predict_centers = tf.reshape(
                 predicts[:, self.boundary2:],
-                [self.batch_size, self.cell_num, self.cell_num, self.centers_per_cell, 2])
+                [self.batch_size, self.cell_num, self.cell_num, self.centers_per_cell, 4])
+            predict_centers = predict_centers[:,:,:,0:1,0:2]
             # ground truth for object probability
             response = tf.reshape(
                 labels[..., 0],
@@ -181,13 +183,13 @@ class YOLONet(object):
                 labels[..., 1:3],
                 [self.batch_size, self.cell_num, self.cell_num, 1, 2])
             centers = tf.tile(
-                centers, [1, 1, 1, self.centers_per_cell, 1]) / self.image_size
+                centers, [1, 1, 1, 1, 1]) / self.image_size
             #conditional probability for each class
             classes = labels[..., 3:]
 
             offset = tf.reshape(
                 tf.constant(self.offset, dtype=tf.float32),
-                [1, self.cell_num, self.cell_num, self.centers_per_cell])
+                [1, self.cell_num, self.cell_num, 1])
             offset = tf.tile(offset, [self.batch_size, 1, 1, 1])
             offset_tran = tf.transpose(offset, (0, 2, 1, 3))
             predict_centers_tran = tf.stack(

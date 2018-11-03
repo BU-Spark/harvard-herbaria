@@ -6,6 +6,7 @@ import tensorflow as tf
 import config as cfg
 from YOLO_network import YOLONet
 from timer import Timer
+import sys
 #----------------------------------------------------------------------------------------------------------------------
 # Author: Siqi Zhang
 # Date: Aug 20th, 2018
@@ -43,6 +44,7 @@ class Detector(object):
 # ----------------------------------------------------------------------------------------------------------------------
     def draw_result(self, img, result):
         for i in range(len(result)):
+            '''
             x = int(result[i][1])
             y = int(result[i][2])
             # determine the object type
@@ -56,7 +58,26 @@ class Detector(object):
             else:
                 # fruit -> blue
                 color_code = (255, 0, 0)
+            print(x,y)
             cv2.circle(img, (x, y), 63, color_code, 3)
+            '''
+            # draw the cell with color code for object
+            h_size = int(np.floor(img.shape[0] / self.cell_num))
+            w_size = int(np.floor(img.shape[1] / self.cell_num))
+            x = int(result[i][4]) * w_size
+            y = int(result[i][5]) * h_size
+            # determine the object type
+            color_code = (0,0,0)
+            if (result[i][0] == 0):
+                # bud -> red
+                color_code = (0, 0, 255)
+            elif (result[i][0] == 1):
+                # flower -> green
+                color_code = (0, 255, 0)
+            else:
+                # fruit -> blue
+                color_code = (255, 0, 0)
+            cv2.rectangle(img,(x,y),(x+w_size,y+h_size),color_code,3)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # try to detect features on the given input image, one image
@@ -80,13 +101,16 @@ class Detector(object):
 # Pass the image through the network
 # ----------------------------------------------------------------------------------------------------------------------
     def detect_from_cvmat(self, inputs):
-        temp1 = self.sess.run(self.net.logits,
-                                   feed_dict={self.net.images: inputs})
-        inputs = np.ones((1,576,576,3)) * 0.5 
         net_output = self.sess.run(self.net.logits,
                                    feed_dict={self.net.images: inputs})
-        diff = np.sum(np.absolute(temp1 - net_output))
-        #print(diff)
+        '''
+        diff = net_output
+        inputs = np.ones((1,self.image_size,self.image_size,3)) 
+        net_output = self.sess.run(self.net.logits,
+                                   feed_dict={self.net.images: inputs})
+        diff = np.sum(np.absolute(diff - net_output))
+        print(diff)
+        '''
         results = []
         for i in range(net_output.shape[0]):
             result = self.interpret_output(net_output[i])
@@ -99,24 +123,28 @@ class Detector(object):
     def interpret_output(self, output):
         # predicted conditional probabilities
         probs = np.zeros((self.cell_num, self.cell_num,
-                          self.centers_per_cell, self.num_class))
+                          2, self.num_class))
         class_probs = np.reshape(
             output[0:self.boundary1],
             (self.cell_num, self.cell_num, self.num_class))
+        #print(class_probs)
         # predicted object probability
         scales = np.reshape(
             output[self.boundary1:self.boundary2],
             (self.cell_num, self.cell_num, self.centers_per_cell))
+        #print(scales)
         # predicted coordinate
         centers = np.reshape(
             output[self.boundary2:],
-            (self.cell_num, self.cell_num, self.centers_per_cell, 2))
+            (self.cell_num, self.cell_num, self.centers_per_cell, 4))
+        #truncate the last width and height dimension
+        centers = centers[:,:,:,0:2]
         offset = np.array(
-            [np.arange(self.cell_num)] * self.cell_num * self.centers_per_cell)
+            [np.arange(self.cell_num)] * self.cell_num * 1)
         offset = np.transpose(
             np.reshape(
                 offset,
-                [self.centers_per_cell, self.cell_num, self.cell_num]),
+                [1, self.cell_num, self.cell_num]),
             (1, 2, 0))
         # scale the predictions back to the original input image size
         centers[:, :, :, 0] += offset
@@ -130,16 +158,19 @@ class Detector(object):
                 probs[:, :, i, j] = np.multiply(
                     class_probs[:, :, j], scales[:, :, i])
         #compute the unconditional class probability and throw the predictions with low probility.
+        #print(probs)
         filter_mat_probs = np.array(probs >= self.threshold, dtype='bool')
+        #print(np.sum(filter_mat_probs))
         filter_mat_centers = np.nonzero(filter_mat_probs)
+         
         centers_filtered = centers[filter_mat_centers[0],
                                filter_mat_centers[1], filter_mat_centers[2]]
         probs_filtered = probs[filter_mat_probs]
         classes_num_filtered = np.argmax(
-            filter_mat_probs, axis=3)[
-            filter_mat_centers[0], filter_mat_centers[1], filter_mat_centers[2]]
-
+            filter_mat_probs, axis=3)[filter_mat_centers[0], filter_mat_centers[1], filter_mat_centers[2]]
+        #print(classes_num_filtered)
         # sort the probability from high to low
+        '''
         argsort = np.array(np.argsort(probs_filtered))[::-1]
         centers_filtered = centers_filtered[argsort]
         probs_filtered = probs_filtered[argsort]
@@ -154,11 +185,11 @@ class Detector(object):
                     probs_filtered[j] = 0.0
 
         # create the filtering mask
-        filter_dist = np.array(probs_filtered > 0.0, dtype='bool')
+        filter_dist = np.array(probs_filtered > self.dist_threshold, dtype='bool')
         centers_filtered = centers_filtered[filter_dist]
         probs_filtered = probs_filtered[filter_dist]
         classes_num_filtered = classes_num_filtered[filter_dist]
-
+        '''
         result = []
         # format the output
         for i in range(len(centers_filtered)):
@@ -166,7 +197,9 @@ class Detector(object):
                 [classes_num_filtered[i],      # integer class type
                  centers_filtered[i][0],
                  centers_filtered[i][1],
-                 probs_filtered[i]])
+                 probs_filtered[i],
+                 filter_mat_centers[0][i],
+                 filter_mat_centers[1][i]])
 
         return result
 
@@ -177,7 +210,7 @@ class Detector(object):
     def calc_dist(self, center1, center2):
         distance = np.sqrt((center1[0] - center2[0]) ** 2 + (center1[1] - center2[1]) ** 2)
         cell_length = self.image_size/self.cell_num
-        distance = distance / (2 * cell_length)
+        distance = distance / (cell_length)
         distance = np.clip(distance, 0.0, 1.0)
         # clip the value
         return distance
@@ -186,14 +219,9 @@ class Detector(object):
 # detect the objects in the image
 # ----------------------------------------------------------------------------------------------------------------------
     def image_detector(self, imname, wait=0):
-        detect_timer = Timer()
         image = cv2.imread(imname)
 
-        detect_timer.tic()
         result = self.detect(image)
-        detect_timer.toc()
-        print('Average detecting time: {:.3f}s'.format(
-            detect_timer.average_time))
 
         self.draw_result(image, result)
         #save the output image
@@ -202,27 +230,31 @@ class Detector(object):
 # ----------------------------------------------------------------------------------------------------------------------
 # main
 # ----------------------------------------------------------------------------------------------------------------------
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', default='model/yolo.ckpt-1', type=str)
-    parser.add_argument('--weight_dir', default='output', type=str)
-    parser.add_argument('--data_dir', default="network", type=str)
-    parser.add_argument('--gpu', default='', type=str)
-    args = parser.parse_args()
+def main(argv):   
+    
+    weights = 'yolo.ckpt-30000'
+    gpu = '0'     
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
-    # construct the network and load trained weights
-    yolo = YOLONet(False)
-    weight_file = os.path.join(args.data_dir, args.weight_dir,args.weights)
-    detector = Detector(yolo, weight_file)
-
-    # detect from image file
-    imname = 'training/Hemerocallis_fulva.64717.2497.jpg'
-    #imname = 'training/Aquilegia_canadensis.64305.2543.jpg'
-    #imname = 'Anemone_canadensis.1424111.36692.jpg'
-    #imname = 'Cat03.jpg'
-    detector.image_detector(imname)
-
+    categories = ['Anemone_canadensis','Anemone_hepatica','Aquilegia_canadensis','Bidens_vulgata','Celastrus_orbiculatus',
+                  'Centaurea_stoebe','Cirsium_arvense','Cirsium_discolor','Geranium_maculatum','Geranium_robertianum',
+                  'Hemerocallis_fulva','Hibiscus_moscheutos','Impatiens_capensis','Iris_pseudacorus']
+    
+    imname = argv[0]
+    specie_name = argv[1]
+    
+    if specie_name in categories:
+        if os.path.isfile(imname):
+            os.environ['CUDA_VISIBLE_DEVICES'] = gpu
+            # construct the network and load trained weights
+            yolo = YOLONet(False)
+            weight_file = os.path.join('model',specie_name ,weights)
+            detector = Detector(yolo, weight_file)
+            #detect and save
+            detector.image_detector(imname)
+            print("...Done.")
+        else:
+            print(imname + " does not exist.")
+    else:
+        print("Model doesn't exist for: " + specie_name)
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

@@ -38,7 +38,7 @@ class image_voc(object):
         images = np.zeros(
             (self.batch_size, self.image_size, self.image_size, 3)) # 3 is the number of channels in the image
         labels = np.zeros(
-            (self.batch_size, self.cell_num, self.cell_num, 6)) # 6 is the number of elements in the label: Pr_object,x,y,Pr_bud, Pr_flower, Pr_fruit
+            (self.batch_size, self.cell_num, self.cell_num, 23)) # 6 is the number of elements in the label: Pr_object,x,y,Pr_bud, Pr_flower, Pr_fruit + 17 empty label
         count = 0
         while count < self.batch_size:
             imname = self.gt_labels[self.cursor]['imname']
@@ -76,7 +76,7 @@ class image_voc(object):
     # Assumption: One cell can only have 1 object. The later object centers will be discarded.
     # ----------------------------------------------------------------------------------------------------------------------
     def process_line(self, line):
-        label = np.zeros((self.cell_num, self.cell_num, 6))
+        label = np.zeros((self.cell_num, self.cell_num, 23))
         # parse the line
         # get the specie name 
         species = line[0].split(".")[0]
