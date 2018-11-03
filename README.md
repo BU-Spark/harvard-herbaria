@@ -35,6 +35,7 @@ For example if you have a image named Anemone_canadensis_1111.jpg and the catego
 ```
 python predict.py Anemone_canadensis_1111.jpg Anemone_canadensis
 ```
+![alt text](https://github.com/BU-Spark/harvard-herbaria/blob/siqi/example/Anemone_canadensis.1040272.17269.jpg)
 The output file will be an image name as "output.jpg" with the feature bounded by colored square:
  - red: bud
  - green: flower
@@ -44,4 +45,4 @@ The output file will be an image name as "output.jpg" with the feature bounded b
 ```
 python eval_model.py
 ```
-which will compute the category-wise average accuracies, model by model.
+which will compute the category-wise average accuracies, visualize the detection result saving them to local folder named "predictions" , model by model.
