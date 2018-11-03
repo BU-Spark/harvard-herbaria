@@ -14,8 +14,8 @@ Plant speciemen feature detection using YOLOnet. We provide pre-trained weights 
  - Hibiscus_moscheutos
  - Impatiens_capensis
  - Iris_pseudacorus'
-Code includes training, predicting for one image and evaluate the accuracy for all 14 models on training sets.
 
+Code includes training, predicting for one image and evaluate the accuracy for all 14 models on training sets.
 Original work from https://github.com/hizhangp/yolo_tensorflow
 ## Installation Prerequisite
 1. Linux system (I used Ubuntu 16.04, have not tested the code on any other Linux distributions)
