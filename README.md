@@ -27,10 +27,13 @@ Original work from https://github.com/hizhangp/yolo_tensorflow
 3. Donwload the pre-trained weights from https://drive.google.com/open?id=1OTo3T4aP3nobsbpWF6hLmM2yTflDFeQH and put the unzipped folder to
    the same folder as the source code.(.zip file is 4.5GB)
 ## Run the model
-We provide two way of using YoloNet:
+We provide two ways of using YoloNet:
 ### Predict the features in any given image.
 If you have a filename to an image and its category name, use predict.py. Note that the category name has to be exactly the same as the
-ones listed above.
+ones listed above. i.e.:
+```
+python predict.py (image_path) (specie name)
+```
 For example if you have a image named Anemone_canadensis_1111.jpg and the category is Anemone Canadensis, enter the following line:
 ```
 python predict.py Anemone_canadensis_1111.jpg Anemone_canadensis
