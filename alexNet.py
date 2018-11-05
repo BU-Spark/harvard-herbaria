@@ -14,7 +14,6 @@ import numpy as np
 
 class AlexNet(object):
     """Implementation of the AlexNet."""
-
     def __init__(self, x, keep_prob, num_classes, skip_layer,
                  weights_path='DEFAULT'):
         """Create the graph of the AlexNet model.
@@ -32,12 +31,10 @@ class AlexNet(object):
         self.NUM_CLASSES = num_classes
         self.KEEP_PROB = keep_prob
         self.SKIP_LAYER = skip_layer
-
         if weights_path == 'DEFAULT':
             self.WEIGHTS_PATH = 'bvlc_alexnet.npy'
         else:
             self.WEIGHTS_PATH = weights_path
-
         # Call the create function to build the computational graph of AlexNet
         self.create()
 
@@ -84,28 +81,21 @@ class AlexNet(object):
         """
         # Load the weights into memory
         weights_dict = np.load(self.WEIGHTS_PATH, encoding='bytes').item()
-
         # Loop over all layer names stored in the weights dict
         for op_name in weights_dict:
-
             # Check if layer should be trained from scratch
             if op_name not in self.SKIP_LAYER:
-
                 with tf.variable_scope(op_name, reuse=True):
-
                     # Assign weights/biases to their corresponding tf variable
                     for data in weights_dict[op_name]:
-
                         # Biases
                         if len(data.shape) == 1:
                             var = tf.get_variable('biases', trainable=False)
                             session.run(var.assign(data))
-
                         # Weights
                         else:
                             var = tf.get_variable('weights', trainable=False)
                             session.run(var.assign(data))
-
 
 def conv(x, filter_height, filter_width, num_filters, stride_y, stride_x, name,
          padding='SAME', groups=1):
@@ -127,10 +117,8 @@ def conv(x, filter_height, filter_width, num_filters, stride_y, stride_x, name,
                                                     input_channels / groups,
                                                     num_filters])
         biases = tf.get_variable('biases', shape=[num_filters])
-
     if groups == 1:
         conv = convolve(x, weights)
-
     # In the cases of multiple groups, split inputs & weights and
     else:
         # Split input and weights and convolve them separately
@@ -138,18 +126,13 @@ def conv(x, filter_height, filter_width, num_filters, stride_y, stride_x, name,
         weight_groups = tf.split(axis=3, num_or_size_splits=groups,
                                  value=weights)
         output_groups = [convolve(i, k) for i, k in zip(input_groups, weight_groups)]
-
         # Concat the convolved output together again
         conv = tf.concat(axis=3, values=output_groups)
-
     # Add biases
     bias = tf.reshape(tf.nn.bias_add(conv, biases), tf.shape(conv))
-
     # Apply relu function
     relu = tf.nn.relu(bias, name=scope.name)
-
     return relu
-
 
 def fc(x, num_in, num_out, name, relu=True):
     """Create a fully connected layer."""
@@ -170,7 +153,6 @@ def fc(x, num_in, num_out, name, relu=True):
     else:
         return act
 
-
 def max_pool(x, filter_height, filter_width, stride_y, stride_x, name,
              padding='SAME'):
     """Create a max pooling layer."""
@@ -178,13 +160,11 @@ def max_pool(x, filter_height, filter_width, stride_y, stride_x, name,
                           strides=[1, stride_y, stride_x, 1],
                           padding=padding, name=name)
 
-
 def lrn(x, radius, alpha, beta, name, bias=1.0):
     """Create a local response normalization layer."""
     return tf.nn.local_response_normalization(x, depth_radius=radius,
                                               alpha=alpha, beta=beta,
                                               bias=bias, name=name)
-
 
 def dropout(x, keep_prob):
     """Create a dropout layer."""

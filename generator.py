@@ -1,7 +1,3 @@
-# Created on Wed May 31 14:48:46 2017
-#
-# @author: Frederik Kratzert
-
 '''
 Containes a helper class for image input pipelines in tensorflow.
 Original author:  Frederik Kratzert
@@ -10,7 +6,7 @@ modified by Siqi Zhang
 
 import tensorflow as tf
 import numpy as np
-
+import cv2 as cv
 from tensorflow.data import Dataset
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework.ops import convert_to_tensor
@@ -22,7 +18,6 @@ class ImageDataGenerator(object):
     """Wrapper class around the new Tensorflows dataset pipeline.
     Requires Tensorflow >= version 1.12rc0
     """
-
     def __init__(self, txt_file, mode, batch_size, num_classes, shuffle=True,
                  buffer_size=1000):
         """Create a new ImageDataGenerator.
@@ -49,7 +44,6 @@ class ImageDataGenerator(object):
 
         # retrieve the data from the text file
         self._read_txt_file()
-
         # number of samples in the dataset
         self.data_size = len(self.labels)
 
@@ -91,8 +85,13 @@ class ImageDataGenerator(object):
             lines = f.readlines()
             for line in lines:
                 items = line.split(' ')
-                self.img_paths.append(items[0])
-                self.labels.append(int(items[1]))
+                specie = items[0].split(".")[0]
+                filename = "patches/" + specie + "/" + items[0]
+                # check for none type because of some broken data
+                img = cv.imread(filename)
+                if img is not None:
+                    self.img_paths.append(filename)
+                    self.labels.append(int(items[1]))
 
     def _shuffle_lists(self):
         """Conjoined shuffling of the list of paths and labels."""
@@ -109,14 +108,10 @@ class ImageDataGenerator(object):
         """Input parser for samples of the training set."""
         # convert label number into one-hot-encoding
         one_hot = tf.one_hot(label, self.num_classes)
-
         # load and preprocess the image
         img_string = tf.read_file(filename)
-        img_decoded = tf.image.decode_png(img_string, channels=3)
+        img_decoded = tf.image.decode_jpeg(img_string, channels=3)
         img_resized = tf.image.resize_images(img_decoded, [227, 227])
-        """
-        Dataaugmentation comes here.
-        """
         img_centered = tf.subtract(img_resized, IMAGENET_MEAN)
 
         # RGB -> BGR
@@ -131,7 +126,7 @@ class ImageDataGenerator(object):
 
         # load and preprocess the image
         img_string = tf.read_file(filename)
-        img_decoded = tf.image.decode_png(img_string, channels=3)
+        img_decoded = tf.image.decode_jpeg(img_string, channels=3)
         img_resized = tf.image.resize_images(img_decoded, [227, 227])
         img_centered = tf.subtract(img_resized, IMAGENET_MEAN)
 

@@ -21,7 +21,7 @@ def main(argv):
     if not os.path.exists("patches"):
         os.makedirs("patches")
     # .txt for storing the patch label
-    patch_label = open("patch_labels.txt", "w")
+    patch_label = open("patch_labels/patch_labels.txt", "w")
     for label_name in label_names:
         specie = label_name.split("_")
         specie = specie[0] + "_" + specie[1]
@@ -56,7 +56,7 @@ def main(argv):
                     bottomright_y = int(min((center[1] + patch_size/2), img_height))
                     patch = img[topleft_y:bottomright_y, topleft_x:bottomright_x]
                     # write the label to file
-                    patch_file = imname[:-4] + ".0.jpg"
+                    patch_file = imname[:-4] + ".0.jpeg"
                     patch_file = patch_file.split("/")[-1]
                     patch_label.write(patch_file + " " + "0" + "\n")
                     # save patch
@@ -74,7 +74,7 @@ def main(argv):
                     bottomright_y = int(min(((center[1]) + patch_size / 2), img_height))
                     patch = img[topleft_y:bottomright_y, topleft_x:bottomright_x]
                     # write the label to file
-                    patch_file = imname[:-4] + ".1.jpg"
+                    patch_file = imname[:-4] + ".1.jpeg"
                     patch_file = patch_file.split("/")[-1]
                     patch_label.write(patch_file + " " + "1" + "\n")
                     # save patch
@@ -91,7 +91,7 @@ def main(argv):
                     bottomright_y = int(min((center[1] + patch_size / 2), img_height))
                     patch = img[topleft_y:bottomright_y, topleft_x:bottomright_x]
                     # write the label to file
-                    patch_file = imname[:-4] + ".2.jpg"
+                    patch_file = imname[:-4] + ".2.jpeg"
                     patch_file = patch_file.split("/")[-1]
                     patch_label.write(patch_file + " " + "2" + "\n")
                     # save patch
@@ -107,13 +107,14 @@ def main(argv):
                 bottomright_y = int(min((rand_y + patch_size / 2), img_height))
                 patch = img[topleft_y:bottomright_y, topleft_x:bottomright_x]
                 # write the label to file
-                imname = imname[:-4] + ".3.jpg"
+                imname = imname[:-4] + ".3.jpeg"
                 patch_file = imname.split("/")[-1]
                 patch_label.write(patch_file + " " + "3" + "\n")
                 # save patch
                 patch_file = "patches/" + specie + "/" + patch_file
                 cv.imwrite(patch_file, patch)
                 line = original.readline()
+            original.close()
     patch_label.close()
 if __name__ == "__main__":
     main(sys.argv)
