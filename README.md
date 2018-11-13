@@ -48,4 +48,4 @@ The output file will be an image name as "output.jpg" with the feature bounded b
 ```
 python eval_model.py
 ```
-which will compute the category-wise average accuracies, visualize the detection result saving them to local folder named "predictions" , model by model.
+which will compute the category-wise average overall accuracies and non-background prediction accuracies, visualize the detection result saving them to local folder named "predictions" , model by model.
