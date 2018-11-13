@@ -34,7 +34,8 @@ class Detector(object):
 
         # this is the container for storing the statistical data for predictions
         self.accuracy = []
-
+        # this is the container for storing the accuracy for non-background predictions
+        self.non_back_accuracy = []
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
 
@@ -151,14 +152,22 @@ class Detector(object):
         label = label[:,:,1]
         
         # loop through the result and compute the stats
-        predicted_label = np.zeros((self.cell_num, self.cell_num))+3
+        predicted_label = np.zeros((self.cell_num, self.cell_num))+3 #initialize everything as background point
+        # correct non-background prediction
+        correct = 0
         for i in range(len(result)):
             x_cell = int(result[i][4])
             y_cell = int(result[i][5])
             predicted_label[x_cell,y_cell] = result[i][0]
+            # determine if this prediction is a background
+            if(result[i][0] != 3):
+                if(result[i][0] == label[x_cell,y_cell]):
+                    correct += 1
         #compute the accuracy
         accuracy = np.sum((predicted_label == label).astype(int))/(self.cell_num * self.cell_num)
         self.accuracy.append(accuracy)
+        nonback_accuracy = 0 if len(result)==0 else correct/len(result)
+        self.non_back_accuracy.append(nonback_accuracy)
         return result
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -307,7 +316,9 @@ def main():
                 # detect from image file
                 detector.image_detector(imname, line)
                 line = ground_truth.readline()
-        accuracy = np.sum(detector.accuracy)/len(detector.accuracy)
-        print(accuracy)
+        accuracy = 0 if len(detector.accuracy) ==0 else np.sum(detector.accuracy)/len(detector.accuracy)
+        print("Overall Accuracy: " + str(accuracy))
+        non_back_accuracy = 0 if len(detector.accuracy) ==0 else np.sum(detector.non_back_accuracy)/len(detector.non_back_accuracy)
+        print("None backgrond Accuracy: " + str(non_back_accuracy))
 if __name__ == '__main__':
     main()
