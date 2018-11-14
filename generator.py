@@ -7,7 +7,7 @@ modified by Siqi Zhang
 import tensorflow as tf
 import numpy as np
 import cv2 as cv
-#from tensorflow.data import Dataset
+from tensorflow.data import Dataset
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework.ops import convert_to_tensor
 
@@ -56,7 +56,7 @@ class ImageDataGenerator(object):
         self.labels = convert_to_tensor(self.labels, dtype=dtypes.int32)
 
         # create dataset
-        data = tf.data.Dataset.from_tensor_slices((self.img_paths, self.labels))
+        data = Dataset.from_tensor_slices((self.img_paths, self.labels))
 
         # distinguish between train/infer. when calling the parsing functions
         if mode == 'training':
@@ -129,7 +129,6 @@ class ImageDataGenerator(object):
         img_decoded = tf.image.decode_jpeg(img_string, channels=3)
         img_resized = tf.image.resize_images(img_decoded, [227, 227])
         img_centered = tf.subtract(img_resized, IMAGENET_MEAN)
-
         # RGB -> BGR
         img_bgr = img_centered[:, :, ::-1]
 

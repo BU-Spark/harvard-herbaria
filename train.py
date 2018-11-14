@@ -22,7 +22,7 @@ val_file = 'patch_labels/testing_labels.txt'
 # Learning params
 learning_rate = 0.001
 num_epochs = 500
-batch_size = 128
+batch_size = 225
 # Network params
 dropout_rate = 0.5
 num_classes = 4
@@ -32,14 +32,12 @@ train_layers = ['fc8', 'fc7', 'fc6']
 display_step = 25
 
 # Path for tf.summary.FileWriter and to store model checkpoints
-filewriter_path = "output/tensorboard"
-checkpoint_path = "output/checkpoints"
+filewriter_path = "/output/tensorboard"
+checkpoint_path = "/output/checkpoints"
 
 def main(argv):
-    if not os.path.exists(filewriter_path):
-        os.makedirs(filewriter_path)
-    if not os.path.exists(checkpoint_path):
-        os.makedirs(checkpoint_path)
+
+
     """
     Main Part of the finetuning Script.
     """
@@ -149,7 +147,7 @@ def main(argv):
             print("{} Epoch number: {}".format(datetime.now(), epoch+1))
             # Initialize iterator with the training dataset
             sess.run(training_init_op)
-            for step in range(train_batches_per_epoch):
+            for step in range(1):
 
                 # get next batch of data
                 img_batch, label_batch = sess.run(next_batch)
