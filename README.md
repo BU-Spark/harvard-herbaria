@@ -1,2 +1,2 @@
 # Harvard Machine Learning Phenology Project
-Harvard Herbaria Project. Landing page, more to be added
+Harvard Herbaria Project. Current model: alexnet, yolonet
