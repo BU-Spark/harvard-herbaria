@@ -24,7 +24,6 @@ num_classes = 4
 train_layers = ['fc8', 'fc7', 'fc6']
 patch_size = 227
 def main(argv):
-    img_name = "Anemone_canadensis.102823.6293.jpg"
     # load and preprocess the image
     origin_img = cv.imread(argv[0])
     if origin_img is None:

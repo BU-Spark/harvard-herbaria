@@ -16,13 +16,13 @@ Configuration Part.
 """
 
 # Path to the textfiles for the trainings and validation set
-train_file = 'patch_labels/training_labels.txt'
-val_file = 'patch_labels/testing_labels.txt'
+train_file = "patch_labels/Anemone_canadensis_training_labels.txt"
+val_file = "patch_labels/Anemone_canadensis_testing_labels.txt"
 
 # Learning params
-learning_rate = 0.001
+learning_rate = 0.0005
 num_epochs = 500
-batch_size = 225
+batch_size = 25
 # Network params
 dropout_rate = 0.5
 num_classes = 4
@@ -147,7 +147,7 @@ def main(argv):
             print("{} Epoch number: {}".format(datetime.now(), epoch+1))
             # Initialize iterator with the training dataset
             sess.run(training_init_op)
-            for step in range(1):
+            for step in range(train_batches_per_epoch):
 
                 # get next batch of data
                 img_batch, label_batch = sess.run(next_batch)

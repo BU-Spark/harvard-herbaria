@@ -12,10 +12,10 @@ import os
 # percentage of data used for training
 training_percent = 0.9
 def main(argv):
-    training_labels = open("patch_labels/training_labels.txt", "w")
-    testing_labels = open("patch_labels/testing_labels.txt", "w")
+    training_labels = open("patch_labels/Anemone_canadensis_training_labels.txt", "w")
+    testing_labels = open("patch_labels/Anemone_canadensis_testing_labels.txt", "w")
     labels = []
-    with open("patch_labels/patch_labels.txt", "r") as patch_labels:
+    with open("patch_labels/Anemone_canadensis_patch_labels.txt", "r") as patch_labels:
         line = patch_labels.readline()
         while line:
             labels.append(line)
