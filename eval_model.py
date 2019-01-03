@@ -18,6 +18,7 @@ label_names = ['Anemone_canadensis_label.txt', 'Anemone_hepatica_label.txt', 'Aq
                'Cirsium_arvense_label.txt', 'Cirsium_discolor_label.txt', 'Geranium_maculatum_label.txt',
                'Geranium_robertianum_label.txt', 'Hemerocallis_fulva_label.txt', 'Hibiscus_moscheutos_label.txt',
                'Impatiens_capensis_label.txt', 'Iris_pseudacorus_label.txt']
+label_names = ['Anemone_canadensis_label.txt']
 val_file = 'patch_labels/Anemone_canadensis_label.txt'
 IMAGENET_MEAN = [123.68, 116.779, 103.939]
 # Learning params
@@ -49,7 +50,7 @@ def main(argv):
                     labels.append(int(items[1]))
         length = 0
         batch_size = len(img_paths)
-        print("Number of testing:" + str(batch_size))
+        print("Number of testing for " + name + ": " + str(batch_size))
         batch = []
         # load patches
         while length < len(img_paths):
@@ -97,14 +98,31 @@ def main(argv):
         # evaluate non-background accuracy
         count = 0      # number of non background batch
         correct = 0     # correct prediction
+        # number of feature predicted
+        bud = 0
+        flower = 0
+        fruit = 0
+        background = 0
         for i in range(0, len(array)):
             # not a background
             if(labels[i] != 3):
                 count += 1
+                if (array[i] == 0):
+                    bud += 1
+                elif (array[i] == 1):
+                    flower += 1
+                else:
+                    fruit += 1
                 if(array[i] == labels[i]):
                     correct += 1
+            else:
+                background += 1
         non_back_accuracy = correct / count
         print("Non-background accuracy: " + str(non_back_accuracy))
+        print("Number of bud found: " + str(bud))
+        print("Number of flower found: " + str(flower))
+        print("Number of fruit found: " + str(fruit))
+        print("Number of background found: " + str(background))
     return 0
 
 if __name__ == "__main__":
