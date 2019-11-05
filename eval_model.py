@@ -11,19 +11,17 @@ import numpy as np
 # Assumptions:
 #               executable and csv are in the same directory
 #----------------------------------------------------------------------------------------------------------------------
-weights_file = "model/model_epoch301.ckpt"
+weights_file = "model/model_epoch1001.ckpt"
 # validation patch location
-label_names = ['Anemone_canadensis_label.txt', 'Anemone_hepatica_label.txt', 'Aquilegia_canadensis_label.txt',
-               'Bidens_vulgata_label.txt', 'Celastrus_orbiculatus_label.txt', 'Centaurea_stoebe_label.txt',
-               'Cirsium_arvense_label.txt', 'Cirsium_discolor_label.txt', 'Geranium_maculatum_label.txt',
-               'Geranium_robertianum_label.txt', 'Hemerocallis_fulva_label.txt', 'Hibiscus_moscheutos_label.txt',
-               'Impatiens_capensis_label.txt', 'Iris_pseudacorus_label.txt']
-label_names = ['Anemone_canadensis_label.txt']
-val_file = 'patch_labels/Anemone_canadensis_label.txt'
+label_names = ['Anemone_canadensis', 'Anemone_hepatica', 'Aquilegia_canadensis',
+               'Bidens_vulgata', 'Celastrus_orbiculatus', 'Centaurea_stoebe',
+               'Cirsium_arvense', 'Cirsium_discolor', 'Geranium_maculatum',
+               'Geranium_robertianum', 'Hemerocallis_fulva', 'Hibiscus_moscheutos',
+               'Impatiens_capensis', 'Iris_pseudacorus']
 IMAGENET_MEAN = [123.68, 116.779, 103.939]
 # Learning params
-learning_rate = 0.001
-num_epochs = 500
+learning_rate = 0.0005
+num_epochs = 1000
 batch_size = 25
 # Network params
 dropout_rate = 0.5
@@ -33,8 +31,9 @@ patch_size = 227
 def main(argv):
     # read patches
     for name in label_names:
+        weights_file = "model/" + name + "/checkpoints/model_epoch1001.ckpt"
         tf.reset_default_graph()
-        val_file = "patch_labels/" + name
+        val_file = "patch_labels/" + name + "_label_testing.txt"
         img_paths = []
         labels = []
         with open(val_file, 'r') as f:
@@ -98,30 +97,50 @@ def main(argv):
         # evaluate non-background accuracy
         count = 0      # number of non background batch
         correct = 0     # correct prediction
-        # number of feature predicted
+        # number of correct feature predicted
         bud = 0
         flower = 0
         fruit = 0
         background = 0
+        bud_total = 0
+        flower_total = 0
+        fruit_total = 0
         for i in range(0, len(array)):
             # not a background
             if(labels[i] != 3):
                 count += 1
-                if (array[i] == 0):
-                    bud += 1
-                elif (array[i] == 1):
-                    flower += 1
+                # count total number of features in testing samples
+                if(labels[i] == 0):
+                    bud_total += 1
+                elif(labels[i] == 1):
+                    flower_total += 1
                 else:
-                    fruit += 1
+                    fruit_total += 1
+                #correct prediction
                 if(array[i] == labels[i]):
                     correct += 1
+                    if (array[i] == 0):
+                        bud += 1
+                    elif (array[i] == 1):
+                        flower += 1
+                    else:
+                        fruit += 1
             else:
                 background += 1
         non_back_accuracy = correct / count
         print("Non-background accuracy: " + str(non_back_accuracy))
-        print("Number of bud found: " + str(bud))
-        print("Number of flower found: " + str(flower))
-        print("Number of fruit found: " + str(fruit))
+        if bud_total != 0:
+            print("Accuracy of correct bud found: " + str(bud/bud_total))
+        else: 
+            print("Accuracy of correct bud found: " + str(0))
+        if flower_total != 0:
+            print("Accuracy of correct flower found: " + str(flower/flower_total))
+        else: 
+            print("Accuracy of correct flower found: " + str(0))
+        if fruit_total != 0:
+            print("Accuracy of correct fruit found: " + str(fruit/fruit_total))
+        else: 
+            print("Accuracy of correct fruit found: " + str(0))
         print("Number of background found: " + str(background))
     return 0
 
