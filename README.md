@@ -37,7 +37,8 @@ For example if you have a image named Anemone_canadensis_1111.jpg and the catego
 ```
 python detect.py Anemone_canadensis_1111.jpg
 ```
-The output file will be an image name as "output.jpg" with the feature bounded by colored square:
+You can tune the parameters in the file to gain a better detection result.
+The output file will be an image name as "raw.jpg" with the feature bounded by colored square:
  - red: bud
  - green: flower
  - blue: fruit
