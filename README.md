@@ -41,6 +41,8 @@ The output file will be an image name as "output.jpg" with the feature bounded b
  - red: bud
  - green: flower
  - blue: fruit
+ ![alt text](https://github.com/BU-Spark/harvard-herbaria/blob/alexnet_alter/example/example_1.jpg)
+ ![alt text](https://github.com/BU-Spark/harvard-herbaria/blob/alexnet_alter/example/example_2.jpg)
  ### Evaluate the model
  You can also evaluate minipatch prediction the accuracies a testing set:
 ```
