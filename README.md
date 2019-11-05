@@ -1,4 +1,5 @@
 # YoloNet for Plant Specimen Feature Detection
+This is the finaly version for alexnet + sliding windows approach.
 Plant speciemen feature detection using YOLOnet. We provide pre-trained weights from training on images from 14 categories:
  - Anemone_canadensis
  - Anemone_hepatica
@@ -24,10 +25,9 @@ Original work from https://github.com/hizhangp/yolo_tensorflow
 1. Clone the repository to local. (the source code)
 2. Download the image set from https://drive.google.com/open?id=1qeQfS7czqIF7jhl67X1MrKpIU6f4TgwE and put the unzipped folder to the same
    folder as the source code.(.zip file is 2GB)
-3. Donwload the pre-trained weights from https://drive.google.com/open?id=1OTo3T4aP3nobsbpWF6hLmM2yTflDFeQH and put the unzipped folder to
-   the same folder as the source code.(.zip file is 4.5GB)
+3. Donwload the pre-trained weights.(to be uploaded)
 ## Run the model
-We provide two ways of using YoloNet:
+We provide two ways of using this:
 ### Predict the features in any given image.
 If you have a filename to an image and its category name, use predict.py. Note that the category name has to be exactly the same as the
 ones listed above. i.e.:
